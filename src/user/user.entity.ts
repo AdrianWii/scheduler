@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Meeting } from 'src/meeting/meeting.entity';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 
 @Entity()
@@ -12,6 +13,10 @@ export class User {
   @Column()
   @Column({nullable: false, unique: true })
   email: string;
+
+  @ManyToMany(() => Meeting)
+  @JoinTable()
+  meetings: Meeting[];
 
   constructor(name: string, email: string) {
     this.id = uuidv4();
