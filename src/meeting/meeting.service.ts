@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { In, Repository } from 'typeorm';
 import { Meeting } from './meeting.entity';
 import { User } from 'src/user/user.entity';
@@ -19,9 +19,13 @@ export class MeetingService {
         const emails = this.removeDuplicateEmails(participantEmails);
 
         const participants = await this.userRepository.findBy({ email: In(emails) })
-
         if (participants.length !== emails.length) {
             throw new BadRequestException('One or more participants not found. Make sure all users belong to your organization.');
+        }
+
+        const overlappingMeetings = await this.getOverlappingMeetings(startTime, participants);
+        if (overlappingMeetings.length > 0) {
+            throw new ConflictException('A meeting already exists for one or more participants during the given time slot.');
         }
 
         const meeting = new Meeting(title, startTime, participants);
@@ -37,5 +41,18 @@ export class MeetingService {
         emails.forEach(email => uniqueEmailsSet.add(email));
 
         return Array.from(uniqueEmailsSet);
+    }
+
+    private async getOverlappingMeetings(startTime: Date, participants: User[]) {
+        const meetingStartTime = new Date(startTime);
+        const endTime = new Date(meetingStartTime.getTime() + 3600000);
+
+        const overlappingMeetings = await this.meetingRepository.createQueryBuilder('meeting')
+        .innerJoin('meeting.participants', 'participant')
+        .where('participant.email IN (:...participantEmails)', { participantEmails: participants.map(participant => participant.email) })
+        .andWhere('(meeting.startTime < :endTime AND :startTime < datetime(meeting.startTime, "+60 minutes"))', { startTime: meetingStartTime, endTime: endTime })
+        .getMany();
+
+        return overlappingMeetings;
     }
 }

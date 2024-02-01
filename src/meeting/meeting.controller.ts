@@ -18,6 +18,7 @@ export class MeetingController {
     @Post()
     @ApiResponse({ status: 201, description: 'Meeting created successfully', type: Meeting })
     @ApiResponse({ status: 400, description: 'One or more participants not found' })
+    @ApiResponse({ status: 409, description: 'A meeting already exists for one or more participants during the given time slot.' })
     async createMeeting(@Body() createMeetingDto: CreateMeetingDto) {
         return await this.meetingService.createMeeting(createMeetingDto);
     }
